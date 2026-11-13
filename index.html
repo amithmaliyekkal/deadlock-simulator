@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Deadlock Detective</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<!-- ====== Hero Banner ====== -->
+<div class="hero">
+  <div class="hero-inner">
+    <h1>🔍 Deadlock Detective</h1>
+    <p>Interactive deadlock detection &amp; recovery simulator</p>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ====== Top Bar: Presets + Sizing ====== -->
+  <div class="top-bar">
+    <div class="top-group">
+      <label for="preset-select">📂 Scenario</label>
+      <select id="preset-select">
+        <option value="safe">✅ Safe State — No Deadlock</option>
+        <option value="deadlocked">🔴 Deadlocked (5 Processes)</option>
+        <option value="simple">🔗 Classic 2-Process Deadlock</option>
+        <option value="dining">🍽️ Dining Philosophers</option>
+        <option value="">✏️ Custom</option>
+      </select>
+    </div>
+    <div class="top-group">
+      <label>Processes</label>
+      <input type="number" id="process-count" min="1" max="20" value="5" />
+    </div>
+    <div class="top-group">
+      <label>Resources</label>
+      <input type="number" id="resource-count" min="1" max="10" value="3" />
+    </div>
+    <button class="btn btn-ghost" id="btn-apply-size">Apply</button>
+  </div>
+
+  <!-- ====== Matrices Section ====== -->
+  <section class="section">
+    <div class="section-header">
+      <h2>📊 Resource Matrices</h2>
+      <span class="help-tip" title="Enter the current allocation, pending requests, and available resources. All values must be non-negative integers.">?</span>
+    </div>
+    <div id="matrices-area" class="matrices-grid"></div>
+    <div id="available-area" class="avail-row"></div>
+  </section>
+
+  <!-- ====== Action Buttons ====== -->
+  <div class="action-bar">
+    <button class="btn btn-primary btn-lg" id="btn-detect">
+      <span class="btn-icon">▶</span> Run Detection
+    </button>
+    <button class="btn btn-teal btn-lg" id="btn-step">
+      <span class="btn-icon">⏭</span> Step Through
+    </button>
+    <div class="speed-widget">
+      <span>🐢</span>
+      <input type="range" id="speed-slider" min="100" max="1100" value="600" />
+      <span>🐇</span>
+    </div>
+    <div class="action-spacer"></div>
+    <button class="btn btn-ghost" id="btn-reset">↻ Reset</button>
+  </div>
+
+  <!-- ====== Status ====== -->
+  <div id="status-bar" class="toast toast-info">
+    Load a scenario or enter values, then click <strong>Run Detection</strong>.
+  </div>
+
+  <!-- ====== Results + Recovery ====== -->
+  <section class="section" id="result-section">
+    <div class="section-header">
+      <h2>🎯 Result</h2>
+    </div>
+    <div id="result-area">
+      <div class="empty-state">Run the detection algorithm to see results here.</div>
+    </div>
+
+    <!-- Recovery -->
+    <div id="recover-section" class="hidden">
+      <div class="recover-card">
+        <div class="recover-top">
+          <span class="recover-icon">🛠️</span>
+          <strong>Recovery — Terminate a process to break the deadlock</strong>
+        </div>
+        <div class="recover-controls">
+          <select id="recover-select"></select>
+          <button class="btn btn-danger" id="btn-recover">Terminate &amp; Reclaim Resources</button>
+        </div>
+        <p class="recover-note">
+          In a real OS, the scheduler picks a victim by priority or cost. This simulator
+          simply reclaims all resources. Re-run detection after recovery.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====== Two-column: Steps + Graph ====== -->
+  <div class="split-panel">
+
+    <!-- Steps -->
+    <section class="section split-left">
+      <div class="section-header">
+        <h2>📝 Algorithm Trace</h2>
+        <span class="help-tip" title="Each step shows the Work vector and Finish array. Watch how processes are checked and resources reclaimed.">?</span>
+      </div>
+      <div id="steps-area" class="steps-scroll">
+        <div class="empty-state">Steps will appear here after detection.</div>
+      </div>
+    </section>
+
+    <!-- Graph -->
+    <section class="section split-right">
+      <div class="section-header">
+        <h2>🔗 Resource-Allocation Graph</h2>
+      </div>
+      <canvas id="graph-canvas"></canvas>
+      <div class="graph-legend">
+        <div class="legend-item"><span class="swatch" style="background:#1565d8"></span> Allocation (R→P)</div>
+        <div class="legend-item"><span class="swatch" style="background:#ca8a04"></span> Request (P→R)</div>
+        <div class="legend-item"><span class="swatch" style="background:#dc2626"></span> Deadlocked</div>
+      </div>
+      <p class="fine-print">
+        ⓘ Graph cycles prove deadlock only for single-instance resources.
+        The matrix algorithm is authoritative for multi-instance types.
+      </p>
+    </section>
+  </div>
+
+  <!-- ====== How It Works ====== -->
+  <section class="section">
+    <button id="how-toggle" class="collapse-btn">
+      <span class="collapse-arrow">▶</span> How It Works — Key Concepts
+    </button>
+    <div id="how-content" class="collapsed">
+      <div class="concepts-grid">
+        <div class="concept-card">
+          <div class="concept-icon">💀</div>
+          <h4>Deadlock</h4>
+          <p>A set of processes where every member waits for a resource held by another member. Requires: mutual exclusion, hold &amp; wait, no preemption, circular wait.</p>
+        </div>
+        <div class="concept-card">
+          <div class="concept-icon">📊</div>
+          <h4>Allocation Matrix</h4>
+          <p>How many instances of each resource type each process <em>currently holds</em>.</p>
+        </div>
+        <div class="concept-card">
+          <div class="concept-icon">📋</div>
+          <h4>Request Matrix</h4>
+          <p>How many <em>additional</em> instances each process needs right now.</p>
+        </div>
+        <div class="concept-card">
+          <div class="concept-icon">📦</div>
+          <h4>Available Vector</h4>
+          <p>Free instances of each resource type not allocated to any process.</p>
+        </div>
+        <div class="concept-card concept-wide">
+          <div class="concept-icon">🔍</div>
+          <h4>Detection Algorithm</h4>
+          <ol>
+            <li>Set <code>Work = Available</code>.</li>
+            <li>Mark process <em>i</em> Finished if its Allocation is all zero; else Unfinished.</li>
+            <li>Find an unfinished process whose <code>Request ≤ Work</code>.</li>
+            <li>Mark it finished; add its <code>Allocation</code> to <code>Work</code>.</li>
+            <li>Repeat until no more can finish.</li>
+            <li>Any still-unfinished process is <strong>deadlocked</strong>.</li>
+          </ol>
+        </div>
+        <div class="concept-card">
+          <div class="concept-icon">🛠️</div>
+          <h4>Recovery</h4>
+          <p>Abort a deadlocked process, reclaim its resources, and rerun detection. Real systems may also rollback or use priority preemption.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div><!-- /container -->
+
+<script src="js/deadlock-engine.js"></script>
+<script src="js/ui.js"></script>
+
+</body>
+</html>
